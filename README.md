@@ -191,4 +191,5 @@ Dr. Linga Murthy Narlagiri — lingamraju26@gmail.com
 ## Acknowledgements
 
 - [fastMRI](https://fastmri.org/) — NYU / Meta AI benchmark dataset
+- [HuggingFace](https://huggingface.co/datasets/AUMLProject/fastmri-knee-singlecoil-rss) — fastMRI knee singlecoil dataset hosting (AUMLProject/fastmri-knee-singlecoil-rss)
 - [E2E-VarNet](https://arxiv.org/abs/2004.06688) — Sriram et al., 2020 (cascade design inspiration)
