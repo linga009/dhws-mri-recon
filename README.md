@@ -172,7 +172,7 @@ If you use this work in research, please cite:
 
 ```bibtex
 @misc{narlagiri2026dhwsmri,
-  author    = {Narlagiri, Linga Murthy},
+  author    = {Narlagiri, Dr. Linga Murthy},
   title     = {DHWS-MRI-Recon: K-Space Native Accelerated MRI Reconstruction},
   year      = {2026},
   publisher = {GitHub},
@@ -184,7 +184,7 @@ If you use this work in research, please cite:
 
 ## Contact
 
-Linga Murthy Narlagiri — lingamraju26@gmail.com
+Dr. Linga Murthy Narlagiri — lingamraju26@gmail.com
 
 ---
 
