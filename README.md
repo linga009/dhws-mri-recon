@@ -58,7 +58,8 @@ a transfer that, to our knowledge, has not been attempted before for MRI.
 ## Quickstart
 
 ```bash
-pip install torch numpy huggingface_hub
+pip install -r requirements.txt
+# (for a CUDA GPU build of PyTorch, see the note at the top of requirements.txt)
 
 # Runs on synthetic phantoms immediately — no data download, no registration
 python dhws_mri_best.py

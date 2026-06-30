@@ -53,6 +53,7 @@ gemini_cli_skills.py
 *.md
 !README.md
 *.txt
+!requirements.txt
 *.log
 DHWS_*.md
 BUG_REPORT_*.md
