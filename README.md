@@ -1,6 +1,6 @@
 # DHWS-MRI-Recon
 
-**Accelerated MRI reconstruction from undersampled k-space — physics-grounded, hallucination-free, fastMRI-competitive.**
+**Accelerated MRI reconstruction from undersampled k-space — physics-grounded, reduced hallucinations, fastMRI-competitive.**
 
 DHWS-MRI is a k-space-native deep learning framework that reconstructs MRI images from undersampled Fourier measurements without adversarial loss. It combines spectral basis decoding, hash-grid detail recovery, and unrolled data-consistency cascades to achieve reconstruction quality competitive with E2E-VarNet on the fastMRI benchmark.
 
@@ -18,7 +18,7 @@ MRI scanners capture k-space (Fourier domain), not pixels. Standard U-Nets work 
 | `HarmonicGeometry` | Captures smooth anatomical priors (MRI has smooth structure) |
 | `DataConsistency` | Hard projection: output k-space must agree with scanner measurements |
 
-No GAN. No hallucinations. Physics first.
+No GAN. Significantly reduced hallucinations. Physics first.
 
 ---
 
@@ -112,7 +112,7 @@ L = w_l1 * L1(pred, target)
   + w_dc * DC_loss                             # data consistency — highest weight
 ```
 
-No adversarial loss. No perceptual loss. No hallucinations.
+No adversarial loss. No perceptual loss. Hallucinations significantly reduced via hard data-consistency projection.
 
 ### Unrolled Cascade (Best / Efficient variants)
 
@@ -182,8 +182,13 @@ If you use this work in research, please cite:
 
 ---
 
+## Contact
+
+Linga Murthy Narlagiri — lingamraju26@gmail.com
+
+---
+
 ## Acknowledgements
 
 - [fastMRI](https://fastmri.org/) — NYU / Meta AI benchmark dataset
 - [E2E-VarNet](https://arxiv.org/abs/2004.06688) — Sriram et al., 2020 (cascade design inspiration)
-- University College Cork — DHWS research context
