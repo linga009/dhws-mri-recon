@@ -139,6 +139,26 @@ This matches the principle behind E2E-VarNet (Sriram et al., 2020) while using t
 
 Synthetic phantom runs converge faster and serve as a zero-setup sanity check.
 
+> **Note:** Results above are based on synthetic phantoms and limited real-data runs.
+> Rigorous validation on the full fastMRI knee/brain benchmark with real scanner data is ongoing.
+> Contributions and independent benchmarking are welcome — see [Collaborators Welcome](#collaborators-welcome).
+
+---
+
+## Multi-Coil Support
+
+`dhws_mri_efficient.py` includes an experimental SENSE-based `SensitivityModel` for multi-coil
+acquisition. It is included in the architecture but currently defaults to single-coil (`num_coils=1`).
+
+To enable multi-coil mode, set in `MRIConfig`:
+
+```python
+num_coils = 8   # or however many coils your scanner uses
+```
+
+Multi-coil SENSE support has not yet been validated against real multi-coil fastMRI data.
+Collaboration with MRI physicists or access to multi-coil datasets would help advance this.
+
 ---
 
 ## Configuration
@@ -179,6 +199,20 @@ If you use this work in research, please cite:
   url       = {https://github.com/linga009/dhws-mri-recon}
 }
 ```
+
+---
+
+## Collaborators Welcome
+
+This is an independent research project and I am actively looking for collaborators in:
+
+- **MRI physics / acquisition** — help validate multi-coil SENSE and real k-space data pipelines
+- **Clinical / radiological** — perceptual quality evaluation and clinical relevance of reconstructions
+- **Deep learning for medical imaging** — benchmarking, ablation studies, architecture improvements
+- **Access to fastMRI or similar scanner datasets** — real data validation beyond synthetic phantoms
+
+If you are interested in collaborating, benchmarking, or integrating DHWS-MRI into your pipeline,
+please get in touch.
 
 ---
 
