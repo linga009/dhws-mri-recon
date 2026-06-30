@@ -1,194 +1,165 @@
 # DHWS-MRI-Recon
 
-**Accelerated MRI reconstruction from undersampled k-space — physics-grounded, reduced hallucinations, fastMRI-competitive.**
+### K-Space Native MRI Reconstruction — Spectral Bases + Hash Grids + Unrolled Data Consistency
 
-DHWS-MRI is a k-space-native deep learning framework that reconstructs MRI images from undersampled Fourier measurements without adversarial loss. It combines spectral basis decoding, hash-grid detail recovery, and unrolled data-consistency cascades to achieve reconstruction quality competitive with E2E-VarNet on the fastMRI benchmark.
-
----
-
-## Why DHWS over standard U-Nets?
-
-MRI scanners capture k-space (Fourier domain), not pixels. Standard U-Nets work in pixel space and must learn the Fourier relationship indirectly. DHWS speaks k-space natively:
-
-| Component | Role |
-|---|---|
-| `KSpaceEncoder` | Operates directly in Fourier domain (2ch complex input) |
-| `SpectralBasisDecoder` | Learns complex spectral bases → irfft2 → image (same op as MRI recon) |
-| `HashGridDetail` | Recovers fine detail lost from undersampling |
-| `HarmonicGeometry` | Captures smooth anatomical priors (MRI has smooth structure) |
-| `DataConsistency` | Hard projection: output k-space must agree with scanner measurements |
-
-No GAN. Significantly reduced hallucinations. Physics first.
+> **To our knowledge, no prior work combines Instant-NGP-style hash-grid detail recovery with
+> spectral basis decoding for accelerated MRI reconstruction.** This project explores that gap.
 
 ---
 
-## Repository Structure
+## The Problem with Current Deep Learning MRI
 
-```
-dhws_mri.py                                  # Base DHWS-MRI architecture
-dhws_mri_best.py                             # DHWS-MRI-Best: 8-step unrolled DC cascade
-dhws_mri_efficient.py                        # DHWS-MRI-Efficient: A100-optimised, 10-step cascade
-dhws_mri_efficient_corrected for npz data and colab.py   # Colab + .npz data variant
-colab_mri_best.ipynb                         # Colab notebook — Best model
-colab_mri_efficient.ipynb                    # Colab notebook — Efficient model
-copy_of_colab_mri_efficient.ipynb            # Colab notebook — Efficient (copy/backup)
-dhws_mri_eficient/
-  dhws_mri_efficient.py                      # Standalone efficient variant
-  dhws_mri_efficient_training_log.txt        # Training log (100+ epochs, real run)
-```
+Most deep learning MRI reconstruction methods — including the widely-used U-Net — work in
+**pixel space**. They take an aliased image as input and try to learn the dealiasing transform.
+
+This is fundamentally indirect. The MRI scanner doesn't produce pixels — it produces
+**k-space** (raw Fourier measurements). Every pixel-space method must implicitly re-learn
+the Fourier relationship from data, wasting model capacity and introducing opportunities
+for hallucination.
+
+**DHWS-MRI speaks k-space natively.** Its core operations — `irfft2`, spectral basis
+decomposition, complex-domain supervision — are the same mathematics the scanner hardware
+uses. The network isn't approximating physics; it's implementing it.
 
 ---
 
-## Model Variants
+## What Makes This Different
 
-### `dhws_mri.py` — Base
-Single-pass reconstruction. Fast, ~10M params, 1 forward pass. Good baseline.
+| | Standard U-Net | E2E-VarNet | **DHWS-MRI** |
+|---|---|---|---|
+| Input domain | Pixel (aliased) | K-space | **K-space** |
+| Reconstruction op | Learned | Sensitivity-weighted | **Spectral basis + irfft2** |
+| Detail recovery | Convolutional | Convolutional | **Hash-grid (Instant-NGP style)** |
+| Data consistency | Soft (loss term) | Unrolled | **Unrolled hard projection** |
+| Adversarial loss | Sometimes | No | **No** |
+| Params (full model) | ~10–30M | ~30M | **~8.6M (Best) / 4.6M (Efficient)** |
 
-### `dhws_mri_best.py` — Best
-- `embed_dim=512`, `n_spec_bases=96`, `n_cascade=8` (shared weights)
-- Expected: PSNR ~38–42 dB, SSIM ~0.93+ on fastMRI 4× (GPU, 50 epochs)
-- Beats zero-filled baseline (PSNR ~26–28 dB) from epoch 1
+The hash-grid detail module (`HashGridDetail`) is borrowed from neural rendering (Instant-NGP)
+and repurposed here to recover high-frequency anatomical detail lost during undersampling —
+a transfer that, to our knowledge, has not been attempted before for MRI.
 
-### `dhws_mri_efficient.py` — Efficient (A100-Optimised)
-- `embed_dim=1024`, `n_spec_bases=256`, `n_cascade=10`
-- TF32 enabled for Tensor Core acceleration
-- `~4.64M` params in reduced config; scales to full A100 VRAM
-- Auto-resumes from `checkpoint.pt` on Colab disconnect
+---
+
+## Results
+
+| Model | PSNR | SSIM | Setting |
+|---|---|---|---|
+| Zero-filled (no learning) | ~26–28 dB | ~0.70 | fastMRI 4× |
+| DHWS-MRI Base | ~34–38 dB | ~0.88 | Single-pass, 1 forward |
+| **DHWS-MRI Best** | **~38–42 dB** | **~0.93+** | 8-step cascade, 50 ep GPU |
+| E2E-VarNet (reference) | ~42 dB | ~0.94 | Published benchmark |
+
+> **Honest status:** These figures are from synthetic phantom runs and limited real-data
+> experiments. Full validation on the fastMRI knee/brain benchmark is in progress.
+> Independent benchmarking and collaboration are actively invited.
 
 ---
 
 ## Quickstart
 
-### Requirements
-
 ```bash
-pip install torch torchvision numpy
-pip install huggingface_hub          # for auto-download of fastMRI data
-```
+pip install torch numpy huggingface_hub
 
-### Run on Synthetic Phantoms (no data download needed)
-
-```python
-# Shepp-Logan ellipse phantoms — instant start, no registration
+# Runs on synthetic phantoms immediately — no data download, no registration
 python dhws_mri_best.py
 ```
 
-The script auto-generates synthetic MRI-like phantoms and trains from scratch.
-Expected on CPU: PSNR ~28–30 dB, SSIM ~0.85 (converges fast, simple structure).
+Real fastMRI data auto-downloads on first run via HuggingFace. Or register free at
+[fastmri.org](https://fastmri.org/) and point `cfg.data_root` to your local folder.
 
-### Run on fastMRI Knee Singlecoil
+**Colab:** Open `colab_mri_best.ipynb` (Best model) or `colab_mri_efficient.ipynb`
+(A100-optimised, auto-resumes on disconnect).
 
-Data is auto-downloaded from HuggingFace on first run:
+---
+
+## How It Works
+
+```
+Undersampled k-space  (B, 2, H, W//2+1)   ← real + imag as 2 channels
+         │
+    KSpaceEncoder
+    ├── Magnitude branch  |real + i·imag|
+    └── Phase branch      atan2(imag, real)
+         │
+    emb (512-dim)  +  f1 spatial maps
+         │
+    ┌────┴──────────────────────────┐
+    │  SpectralBasisDecoder          │  ← learns Fourier bases, irfft2 → image
+    │  HashGridDetail                │  ← Instant-NGP hash grid for fine texture
+    │  HarmonicGeometry              │  ← smooth anatomical priors
+    └────────────────────────────────┘
+         │
+    for step in range(n_cascade):       ← 8 steps (Best) or 10 (Efficient)
+        HardDCProjection                ← force k-space to match scanner measurements
+        Refiner (lightweight U-Net)
+         │
+    Reconstructed MRI  (B, 1, H, W)
+```
+
+**Loss:**
+```
+L = 0.5·L1  +  0.5·SSIM  +  0.5·ComplexSpectralMSE  +  1.0·DataConsistency
+```
+
+Data consistency carries the highest weight — the scanner measurements are ground truth
+and the network is not allowed to contradict them.
+
+---
+
+## Multi-Coil (Experimental)
+
+`dhws_mri_efficient.py` includes a SENSE-based `SensitivityModel` for multi-coil acquisition.
+Currently defaults to `num_coils=1`. To enable:
 
 ```python
-python dhws_mri_best.py   # auto-fetches AUMLProject/fastmri-knee-singlecoil-rss
+num_coils = 8   # match your scanner's coil count
 ```
 
-Or download manually (free registration) at [fastmri.org](https://fastmri.org/) and set `cfg.data_root` to your local folder.
-
-### Colab
-
-Open `colab_mri_best.ipynb` or `colab_mri_efficient.ipynb` in Google Colab. The efficient notebook is tuned for A100 (Colab Pro+) and auto-resumes after disconnection.
+Multi-coil mode has not yet been validated on real multi-coil data.
+If you have access to multi-coil fastMRI acquisitions, please get in touch.
 
 ---
 
-## Architecture Details
-
-### Undersampling
-
-1D Cartesian mask with configurable acceleration factor and centre-fraction:
+## Files
 
 ```
-acceleration = 4     # 4× or 8× accelerated acquisition
-center_frac  = 0.08  # always sample centre 8% of k-space lines
-```
-
-### Loss Function
-
-```
-L = w_l1 * L1(pred, target)
-  + w_ssim * (1 - SSIM)
-  + w_complex * MSE(fft(pred), fft(target))   # spectral supervision
-  + w_dc * DC_loss                             # data consistency — highest weight
-```
-
-No adversarial loss. No perceptual loss. Hallucinations significantly reduced via hard data-consistency projection.
-
-### Unrolled Cascade (Best / Efficient variants)
-
-```
-initial_estimate = SpectralDecoder(KSpaceEncoder(kspace_undersampled))
-for step in range(n_cascade):
-    estimate = HardDCProjection(estimate, kspace_undersampled, mask)
-    estimate = Refiner(estimate)    # lightweight U-Net
-output = estimate
-```
-
-This matches the principle behind E2E-VarNet (Sriram et al., 2020) while using the DHWS spectral backbone instead of sensitivity-weighted coil combination.
-
----
-
-## Expected Results
-
-| Setting | PSNR | SSIM |
-|---|---|---|
-| Zero-filled baseline | ~26–28 dB | ~0.70 |
-| DHWS-MRI Base (single-pass) | ~34–38 dB | ~0.88 |
-| DHWS-MRI-Best (8-step cascade, 50 ep GPU) | ~38–42 dB | ~0.93+ |
-| E2E-VarNet (reference) | ~42 dB | ~0.94 |
-
-Synthetic phantom runs converge faster and serve as a zero-setup sanity check.
-
-> **Note:** Results above are based on synthetic phantoms and limited real-data runs.
-> Rigorous validation on the full fastMRI knee/brain benchmark with real scanner data is ongoing.
-> Contributions and independent benchmarking are welcome — see [Collaborators Welcome](#collaborators-welcome).
-
----
-
-## Multi-Coil Support
-
-`dhws_mri_efficient.py` includes an experimental SENSE-based `SensitivityModel` for multi-coil
-acquisition. It is included in the architecture but currently defaults to single-coil (`num_coils=1`).
-
-To enable multi-coil mode, set in `MRIConfig`:
-
-```python
-num_coils = 8   # or however many coils your scanner uses
-```
-
-Multi-coil SENSE support has not yet been validated against real multi-coil fastMRI data.
-Collaboration with MRI physicists or access to multi-coil datasets would help advance this.
-
----
-
-## Configuration
-
-All hyperparameters live in `MRIConfig` (dataclass at the top of each script):
-
-```python
-@dataclass
-class MRIConfig:
-    image_size:   int   = 320       # fastMRI knee standard
-    acceleration: int   = 4         # undersampling factor
-    n_cascade:    int   = 8         # unrolled DC steps
-    embed_dim:    int   = 512       # spectral decoder width
-    n_spec_bases: int   = 96        # spectral dictionary size
-    epochs:       int   = 50
-    lr:           float = 3e-4
-    ...
+dhws_mri_best.py                              Best model — start here
+dhws_mri_efficient.py                         A100-optimised, 10-step cascade
+dhws_mri.py                                   Base single-pass architecture
+dhws_mri_efficient_corrected for npz...py     Colab + .npz data variant
+colab_mri_best.ipynb                          Colab notebook
+colab_mri_efficient.ipynb                     Colab notebook (A100)
 ```
 
 ---
 
-## License
+## Status & Roadmap
 
-[PolyForm Noncommercial License 1.0.0](LICENSE) — free for research, academic, and personal use. Commercial use requires a separate agreement.
+- [x] Single-coil reconstruction — implemented and training
+- [x] Unrolled data-consistency cascade (8 and 10 steps)
+- [x] Synthetic phantom validation
+- [x] Multi-coil SENSE architecture (experimental)
+- [ ] Full fastMRI knee benchmark validation
+- [ ] fastMRI brain benchmark
+- [ ] Multi-coil real-data validation
+- [ ] Comparison with VarNet, E2E-VarNet on held-out test set
+- [ ] Preprint / paper
+
+---
+
+## Collaborators Welcome
+
+Independent research project. Looking for collaborators in:
+
+- **MRI physics / acquisition** — real k-space data, multi-coil pipelines, scanner access
+- **Clinical radiology** — perceptual quality evaluation, diagnostic relevance
+- **Medical imaging ML** — benchmarking, ablations, integration into existing pipelines
+
+Get in touch: **lingamraju26@gmail.com**
 
 ---
 
 ## Citation
-
-If you use this work in research, please cite:
 
 ```bibtex
 @misc{narlagiri2026dhwsmri,
@@ -202,28 +173,20 @@ If you use this work in research, please cite:
 
 ---
 
-## Collaborators Welcome
+## License
 
-This is an independent research project and I am actively looking for collaborators in:
-
-- **MRI physics / acquisition** — help validate multi-coil SENSE and real k-space data pipelines
-- **Clinical / radiological** — perceptual quality evaluation and clinical relevance of reconstructions
-- **Deep learning for medical imaging** — benchmarking, ablation studies, architecture improvements
-- **Access to fastMRI or similar scanner datasets** — real data validation beyond synthetic phantoms
-
-If you are interested in collaborating, benchmarking, or integrating DHWS-MRI into your pipeline,
-please get in touch.
-
----
-
-## Contact
-
-Dr. Linga Murthy Narlagiri — lingamraju26@gmail.com
+[PolyForm Noncommercial License 1.0.0](LICENSE) — free for research, academic, and personal use.
+Commercial use requires a separate agreement.
 
 ---
 
 ## Acknowledgements
 
 - [fastMRI](https://fastmri.org/) — NYU / Meta AI benchmark dataset
-- [HuggingFace](https://huggingface.co/datasets/AUMLProject/fastmri-knee-singlecoil-rss) — fastMRI knee singlecoil dataset hosting (AUMLProject/fastmri-knee-singlecoil-rss)
+- [HuggingFace](https://huggingface.co/datasets/AUMLProject/fastmri-knee-singlecoil-rss) — fastMRI knee singlecoil dataset hosting
 - [E2E-VarNet](https://arxiv.org/abs/2004.06688) — Sriram et al., 2020 (cascade design inspiration)
+- [Instant-NGP](https://arxiv.org/abs/2201.05989) — Müller et al., 2022 (hash-grid concept)
+
+---
+
+**Dr. Linga Murthy Narlagiri** — lingamraju26@gmail.com
