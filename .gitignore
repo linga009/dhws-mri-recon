@@ -1,0 +1,76 @@
+# ── Python ──────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# ── Large data & model files ─────────────────────────────────────
+*.pt
+*.pth
+*.npz
+*.npy
+*.h5
+*.hdf5
+*.pkl
+*.pickle
+
+# ── Jupyter internals ────────────────────────────────────────────
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# ── Dev copies & scratch files ───────────────────────────────────
+copy_of_*
+dhws_mri_eficient/
+
+# ── Output & data directories ────────────────────────────────────
+data/
+outputs_*/
+
+# ── Non-MRI DHWS source files ────────────────────────────────────
+dhws_best.py
+dhws_best_.txt
+dhws_flash.py
+dhws_full.py
+dhws_full_dissertation.tex
+dhws_full_dissertation_.txt
+dhws_prior.py
+dhws_singularity.py
+dhws_siren.py
+colab_dhws_best.ipynb
+HolographicHashGrid.py
+hybrid_small.py
+latent_dhws.py
+train_small.py
+unified.py
+unified_.txt
+gse.py
+gemini_cli_skills.py
+
+# ── Report & document files ──────────────────────────────────────
+*.pdf
+*.tex
+*.md
+!README.md
+*.txt
+*.log
+DHWS_*.md
+BUG_REPORT_*.md
+gemini.md
+potential_applications.md
+README.txt
+
+# ── Generated / build files ─────────────────────────────────────
+generate_*.py
+run_*.bat
+build_pdf.bat
+*.png
+*.jpg
+*.jpeg
+
+# ── Misc ─────────────────────────────────────────────────────────
+.env
+*.DS_Store
+Thumbs.db
+.vscode/
+.idea/
