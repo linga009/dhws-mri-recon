@@ -176,7 +176,7 @@ Get in touch: **lingamraju26@gmail.com**
 ## License
 
 [PolyForm Noncommercial License 1.0.0](LICENSE) — free for research, academic, and personal use.
-Commercial use requires a separate agreement.
+**Commercial use requires a separate license** — contact **lingamraju26@gmail.com**.
 
 ---
 

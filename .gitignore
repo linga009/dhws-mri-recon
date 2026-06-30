@@ -68,6 +68,11 @@ build_pdf.bat
 *.jpg
 *.jpeg
 
+# ── Claude / AI assistant (personal — never commit) ──────────────
+.claude/
+CLAUDE.md
+_claude_memory/
+
 # ── Misc ─────────────────────────────────────────────────────────
 .env
 *.DS_Store
